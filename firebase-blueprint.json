@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents agricultural user profile details synced from Firebase Authentication",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID matching request.auth.uid" },
+        "email": { "type": "string", "description": "Verified email of the farmer" },
+        "displayName": { "type": "string", "description": "Farmers custom or full name" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "preferredLanguage": { "type": "string", "description": "User language setting (English, Hindi, Telugu)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of account registration" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "CropDiagnosisRecord": {
+      "title": "CropDiagnosisRecord",
+      "description": "Logged AI diagnostics report of crop leaf scans",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Associated user who performed the scan" },
+        "cropName": { "type": "string", "description": "Crop type scanned" },
+        "notes": { "type": "string", "description": "Contextual notes or observation comments" },
+        "report": { "type": "string", "description": "Markdown body resulting from AI vision analysis" },
+        "source": { "type": "string", "description": "Vision system source name (Gemini or Simulated)" },
+        "district": { "type": "string", "description": "Farming location district" },
+        "state": { "type": "string", "description": "Farming location state" },
+        "photo": { "type": "string", "description": "Optional original leaf image compressed base64 string" },
+        "language": { "type": "string", "description": "The language in which this report is saved" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time when diagnostic was analyzed" }
+      },
+      "required": ["userId", "cropName", "report", "source", "timestamp"]
+    },
+    "SoilAuditRecord": {
+      "title": "SoilAuditRecord",
+      "description": "Log of soil health cards generated in the system",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Associated user who performed the test" },
+        "soilType": { "type": "string", "description": "Observed terrain description" },
+        "pH": { "type": "number", "description": "Soil PH acidity multiplier" },
+        "nitrogen": { "type": "string", "description": "Soil nitrogen rating (Low/Medium/High)" },
+        "phosphorus": { "type": "string", "description": "Soil phosphorus rating (Low/Medium/High)" },
+        "potassium": { "type": "string", "description": "Soil potassium rating (Low/Medium/High)" },
+        "organicMatter": { "type": "string", "description": "Soil organic matter rating (Low/Medium/High)" },
+        "targetCrop": { "type": "string", "description": "Sought after cultivation crop option" },
+        "report": { "type": "string", "description": "Formulated expert advisory report" },
+        "district": { "type": "string", "description": "Farming location district" },
+        "state": { "type": "string", "description": "Farming location state" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Time when soil test was evaluated" }
+      },
+      "required": ["userId", "soilType", "pH", "nitrogen", "phosphorus", "potassium", "organicMatter", "targetCrop", "report", "timestamp"]
+    },
+    "FarmerSmsAlertSettings": {
+      "title": "FarmerSmsAlertSettings",
+      "description": "SMS warning subscriber configuration for heavy rain or severe heat",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string", "description": "Farmer 10-digit mobile phone number" },
+        "rainEnabled": { "type": "boolean", "description": "Whether to get SMS warnings on heavy rain alerts" },
+        "heatEnabled": { "type": "boolean", "description": "Whether to get SMS warnings on severe heat alerts" },
+        "logs": { "type": "array", "description": "SIM log list history of dispatched alerts" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of settings sync" }
+      },
+      "required": ["phone", "rainEnabled", "heatEnabled"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores central user account profiles"
+    },
+    "/users/{userId}/diagnoses/{diagnosisId}": {
+      "schema": "CropDiagnosisRecord",
+      "description": "Cloud historical log of plant doctor diagnosis scans"
+    },
+    "/users/{userId}/soilTests/{testId}": {
+      "schema": "SoilAuditRecord",
+      "description": "Cloud historical log of soil health cards and custom fertilizers"
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": "FarmerSmsAlertSettings",
+      "description": "Farmer SMS alerts subscription parameters"
+    }
+  }
+}

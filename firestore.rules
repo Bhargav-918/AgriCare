@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net (Strictly Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives & Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn();
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity-Specific Schema Validations
+
+    function isValidUserProfile(user) {
+      return user.uid == request.auth.uid
+        && user.email == request.auth.token.get('email', '')
+        && (user.get('displayName', '') is string && user.get('displayName', '').size() <= 128)
+        && (user.get('photoURL', '') is string && user.get('photoURL', '').size() <= 1024)
+        && (user.get('preferredLanguage', '') is string && user.get('preferredLanguage', '').size() <= 50);
+    }
+
+    function isValidCropDiagnosisRecord(diag) {
+      return diag.keys().hasAll(['userId', 'cropName', 'report', 'source', 'timestamp'])
+        && diag.keys().size() <= 15
+        && diag.userId == request.auth.uid
+        && diag.cropName is string && diag.cropName.size() <= 200
+        && diag.report is string && diag.report.size() <= 100000
+        && diag.source is string && diag.source.size() <= 200
+        && (diag.get('notes', '') is string && diag.get('notes', '').size() <= 10000)
+        && (diag.get('district', '') is string && diag.get('district', '').size() <= 200)
+        && (diag.get('state', '') is string && diag.get('state', '').size() <= 200)
+        && (diag.get('photo', '') is string && diag.get('photo', '').size() <= 500000)
+        && (diag.get('language', '') is string && diag.get('language', '').size() <= 100)
+        && (diag.timestamp == request.time || diag.timestamp is timestamp);
+    }
+
+    function isValidSoilAuditRecord(soil) {
+      return soil.keys().hasAll(['userId', 'soilType', 'pH', 'nitrogen', 'phosphorus', 'potassium', 'organicMatter', 'targetCrop', 'report', 'timestamp'])
+        && soil.keys().size() <= 12
+        && soil.userId == request.auth.uid
+        && soil.soilType is string && soil.soilType.size() <= 100
+        && (soil.pH is number || soil.pH is float) && soil.pH >= 0 && soil.pH <= 14
+        && soil.nitrogen is string && soil.nitrogen.size() <= 20
+        && soil.phosphorus is string && soil.phosphorus.size() <= 20
+        && soil.potassium is string && soil.potassium.size() <= 20
+        && soil.organicMatter is string && soil.organicMatter.size() <= 20
+        && soil.targetCrop is string && soil.targetCrop.size() <= 100
+        && soil.report is string && soil.report.size() <= 50000
+        && (soil.get('district', '') is string && soil.get('district', '').size() <= 100)
+        && (soil.get('state', '') is string && soil.get('state', '').size() <= 100)
+        && soil.timestamp == request.time;
+    }
+
+    // 2. User Profiles Path (Flattened for maximum robustness)
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      
+      allow create: if isOwner(userId) 
+        && isEmailVerified()
+        && isValidUserProfile(incoming())
+        && incoming().get('createdAt', request.time) == request.time;
+        
+      allow update: if isOwner(userId)
+        && isEmailVerified()
+        && isValidUserProfile(incoming());
+        
+      allow delete: if false;
+    }
+
+    // 3. Crop Diagnosis Records Path (Flattened for explicit query scoping)
+    match /users/{userId}/diagnoses/{diagnosisId} {
+      allow get, list: if isOwner(userId);
+      
+      allow create: if isOwner(userId)
+        && isEmailVerified()
+        && isValidId(diagnosisId)
+        && isValidCropDiagnosisRecord(incoming());
+        
+      allow update, delete: if false;
+    }
+
+    // 4. Soil Audit Records Path (Flattened for explicit query scoping)
+    match /users/{userId}/soilTests/{testId} {
+      allow get, list: if isOwner(userId);
+      
+      allow create: if isOwner(userId)
+        && isEmailVerified()
+        && isValidId(testId)
+        && isValidSoilAuditRecord(incoming());
+        
+      allow update, delete: if false;
+    }
+
+    // 5. Farmer Settings Path (SMS Toggles etc.)
+    match /users/{userId}/settings/{settingId} {
+      allow get: if isOwner(userId);
+      
+      allow create, update: if isOwner(userId)
+        && isEmailVerified()
+        && isValidId(settingId);
+        
+      allow delete: if false;
+    }
+  }
+}

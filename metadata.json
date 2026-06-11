@@ -1,0 +1,6 @@
+{
+  "name": "AI Crop Doctor & Advisor",
+  "description": "An AI-powered agricultural advisory platform and crop disease diagnostic system. Fast pest identification, soil health advice, and weather-aware local farming guidance with multi-language support.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
